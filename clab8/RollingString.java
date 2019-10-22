@@ -17,6 +17,9 @@ class RollingString{
      */
     static final int PRIMEBASE = 6113;
 
+    String aString;
+    int fixedLength;
+
     /**
      * Initializes a RollingString with a current value of String s.
      * s must be the same length as the maximum length.
@@ -24,6 +27,8 @@ class RollingString{
     public RollingString(String s, int length) {
         assert(s.length() == length);
         /* FIX ME */
+        aString = s;
+        fixedLength = length;
     }
 
     /**
@@ -33,6 +38,10 @@ class RollingString{
      */
     public void addChar(char c) {
         /* FIX ME */
+        StringBuilder strd = new StringBuilder(aString);
+        strd.append(c);
+        strd.deleteCharAt(0);
+        aString = strd.toString();
     }
 
 
@@ -44,7 +53,10 @@ class RollingString{
     public String toString() {
         StringBuilder strb = new StringBuilder();
         /* FIX ME */
-        return "";
+        for (int i = 0; i < aString.length(); i += 1) {
+            strb.append(aString.charAt(i));
+        }
+        return strb.toString();
     }
 
     /**
@@ -53,7 +65,7 @@ class RollingString{
      */
     public int length() {
         /* FIX ME */
-        return -1;
+        return fixedLength;
     }
 
 
@@ -65,6 +77,9 @@ class RollingString{
     @Override
     public boolean equals(Object o) {
         /* FIX ME */
+        if (this.toString().equals(o.toString())) {
+            return true;
+        }
         return false;
     }
 
@@ -75,6 +90,11 @@ class RollingString{
     @Override
     public int hashCode() {
         /* FIX ME */
-        return -1;
+        int h = 0;
+        StringBuilder reversedStrb = new StringBuilder(aString).reverse();
+        for (int i = 0; i < aString.length(); i += 1) {
+            h += ((int)reversedStrb.charAt(i)) * UNIQUECHARS ^i % PRIMEBASE;
+        }
+        return h;
     }
 }

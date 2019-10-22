@@ -1,5 +1,10 @@
 package bearmaps.proj2c;
 
+import bearmaps.hw4.AStarSolver;
+import bearmaps.hw4.WeightedEdge;
+import bearmaps.hw4.WeirdSolver;
+
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -24,10 +29,9 @@ public class Router {
      */
     public static List<Long> shortestPath(AugmentedStreetMapGraph g, double stlon, double stlat,
                                           double destlon, double destlat) {
-        //long src = g.closest(stlon, stlat);
-        //long dest = g.closest(destlon, destlat);
-        //return new WeirdSolver<>(g, src, dest, 20).solution();
-        return null;
+        long src = g.closest(stlon, stlat);
+        long dest = g.closest(destlon, destlat);
+        return new AStarSolver<>(g, src, dest, 20).solution();
     }
 
     /**
@@ -37,10 +41,133 @@ public class Router {
      *              corresponds to a node from the graph in the route.
      * @return A list of NavigatiionDirection objects corresponding to the input
      * route.
+     * @zangsy
      */
     public static List<NavigationDirection> routeDirections(AugmentedStreetMapGraph g, List<Long> route) {
         /* fill in for part IV */
-        return null;
+        List<NavigationDirection> result = new LinkedList<>();
+        List<WeightedEdge<Long>> ways = getWays(g, route);
+
+        int prevDirToChange = 0; // Set default value to "Start".
+        int currDirToChange;
+        double distOnPrevWay = 0;
+
+        // Edge case, if there are only 2 vertices in route, namely start and destination,
+        // then the result is simple.
+        if (ways.size() == 1) {
+            NavigationDirection naviDir = new NavigationDirection();
+            naviDir.direction = prevDirToChange;
+            naviDir.way = ways.get(0).getName();
+            naviDir.distance = ways.get(0).weight();
+            result.add(naviDir);
+            return result;
+        }
+
+        for (int i = 1; i < ways.size(); i += 1) {
+            WeightedEdge<Long> prevWay = ways.get(i - 1);
+            WeightedEdge<Long> currWay = ways.get(i);
+
+            long prevVertex = prevWay.from();
+            long currVertex = prevWay.to();
+            long nextVertex = currWay.to();
+
+            double[] prevPo = getPos(g, prevVertex);
+            double[] currPo = getPos(g, currVertex);
+            double[] nextPo = getPos(g, nextVertex);
+
+            // If the way has no name, set its name to "unknown road".
+            if (prevWay.getName() == null) {
+                prevWay.setName("unknown road");
+            }
+            if (currWay.getName() == null) {
+                currWay.setName("unknown road");
+            }
+
+            // add weight to the distance.
+            distOnPrevWay += prevWay.weight();
+
+            // If name of the way changes, it means that a NavigationDirection
+            // object needs to be created and be added to result.
+            if (!currWay.getName().equals(prevWay.getName())) {
+
+                // Calculate two bearings, prevBearing is the bearing between prevVertex and currVertex,
+                // currBearing is the bearing between currVertex between nextVertex.
+                double preBearing = NavigationDirection.bearing(prevPo[0], currPo[0], prevPo[1], currPo[1]);
+                double currBearing = NavigationDirection.bearing(currPo[0], nextPo[0], currPo[1], nextPo[1]);
+
+                // Calculate what direction we are going based on the two bearings.
+                currDirToChange = NavigationDirection.getDirection(preBearing, currBearing);
+
+                // Because a NavigationDirection object of a way needs the total distance travelled on
+                // that way, we cannot create a NavigationDirection object for the way we are travelling,
+                // until we meet a new way with another name. Therefore, every time we find currWayName
+                // is different from prevWayName, we create a NavigationDirection object for the way we
+                // just passed, which has name of prevWayName and direction of prevDirToChange.
+                NavigationDirection naviDir = new NavigationDirection();
+                naviDir.direction = prevDirToChange;
+                naviDir.way = prevWay.getName();
+                naviDir.distance = distOnPrevWay;
+
+                // Set prevDirToChange to currDirToChange, which will be used in next time naviDir creation.
+                prevDirToChange = currDirToChange;
+
+                result.add(naviDir);
+                // Because we changed to a new way with a different name, so reset the distance we travelled.
+                distOnPrevWay = 0;
+            }
+            // Check whether the dest is reached by currWay, i.e. whether currWay is the last
+            // way in ways. If yes, update the distance travelled, and create a NavigationDirection
+            // object for the currWay, because there is no chance to meet a new way, since the whole
+            // loop ends after this loop.
+            if (i == ways.size() - 1) {
+                distOnPrevWay += currWay.weight();
+                NavigationDirection naviDir = new NavigationDirection();
+                naviDir.direction = prevDirToChange;
+                naviDir.way = currWay.getName();
+                naviDir.distance = distOnPrevWay;
+                result.add(naviDir);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Return a list of WeightedEdge that connected every two adjacent vertices in route.
+     *
+     * @param g
+     * @param route
+     * @return
+     * @zangsy
+     */
+    private static List<WeightedEdge<Long>> getWays(AugmentedStreetMapGraph g, List<Long> route) {
+        List<WeightedEdge<Long>> ways = new LinkedList<>();
+        long currVertex;
+        long nextVertex;
+        for (int i = 1; i < route.size(); i += 1) {
+            currVertex = route.get(i - 1);
+            nextVertex = route.get(i);
+            for (WeightedEdge<Long> e : g.neighbors(currVertex)) {
+                if (e.to().equals(nextVertex)) {
+                    ways.add(e);
+                }
+            }
+        }
+        return ways;
+    }
+
+    /**
+     * Return coordinates of an vertex in the form of an array [lon, lat].
+     *
+     * @param g
+     * @param vertex
+     * @return
+     * @zangsy
+     */
+    private static double[] getPos(AugmentedStreetMapGraph g, long vertex) {
+        double[] pos = new double[2];
+        pos[0] = g.lon(vertex);
+        pos[1] = g.lat(vertex);
+        return pos;
     }
 
     /**

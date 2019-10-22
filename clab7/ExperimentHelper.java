@@ -15,7 +15,17 @@ public class ExperimentHelper {
      *  N = 8, OIPL: 13
      */
     public static int optimalIPL(int N) {
-        return 0;
+        if (N == 0) {
+            throw new IllegalArgumentException("There is no node in this BST.");
+        }
+        else if (N == 1) {
+            return 0;
+        }
+        int plus = 0;
+        for (int i = N; i > 1; i = i / 2) {
+            plus += 1;
+        }
+        return optimalIPL(N - 1) + plus;
     }
 
     /** Returns the average depth for nodes in an optimal BST of
@@ -27,6 +37,7 @@ public class ExperimentHelper {
      * @return
      */
     public static double optimalAverageDepth(int N) {
-        return 0;
+        return (double) optimalIPL(N) / N;
     }
+
 }

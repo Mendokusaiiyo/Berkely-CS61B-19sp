@@ -1,5 +1,6 @@
 package hw3.hash;
 
+import java.util.LinkedList;
 import java.util.List;
 
 public class OomageTestUtility {
@@ -12,6 +13,22 @@ public class OomageTestUtility {
          * and ensure that no bucket has fewer than N / 50
          * Oomages and no bucket has more than N / 2.5 Oomages.
          */
-        return false;
+        LinkedList<Integer> [] hashArray = new LinkedList[M];
+            for (int i = 0; i < oomages.size(); i += 1) {
+                int bucketNum = (oomages.get(i).hashCode() & 0x7FFFFFFF) % M;
+                if (hashArray[bucketNum] == null) {
+                    hashArray[bucketNum] = new LinkedList<>();
+                }
+                hashArray[bucketNum].add(oomages.get(i).hashCode());
+            }
+            for (LinkedList x : hashArray) {
+                if (x == null) {
+                    x = new LinkedList<>();
+                }
+                if ((x.size() > oomages.size() / 50) && (x.size() < oomages.size() / 2.5)) {
+                    return true;
+                }
+            }
+            return false;
     }
 }

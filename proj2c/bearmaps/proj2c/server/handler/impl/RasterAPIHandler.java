@@ -17,8 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static bearmaps.proj2c.utils.Constants.SEMANTIC_STREET_GRAPH;
-import static bearmaps.proj2c.utils.Constants.ROUTE_LIST;
+import static bearmaps.proj2c.utils.Constants.*;
 
 /**
  * Handles requests from the web browser for map images. These images
@@ -84,13 +83,114 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
      */
     @Override
     public Map<String, Object> processRequest(Map<String, Double> requestParams, Response response) {
-        //System.out.println("yo, wanna know the parameters given by the web browser? They are:");
-        //System.out.println(requestParams);
+        System.out.println("yo, wanna know the parameters given by the web browser? They are:");
+        System.out.println(requestParams);
         Map<String, Object> results = new HashMap<>();
-        System.out.println("Since you haven't implemented RasterAPIHandler.processRequest, nothing is displayed in "
-                + "your browser.");
+        double requestLRLON = requestParams.get("lrlon");
+        double requestULLON = requestParams.get("ullon");
+        double requestLRLAT = requestParams.get("lrlat");
+        double requestULLAT = requestParams.get("ullat");
+
+        // make sure if the query if validate.
+        if (requestLRLAT > requestULLAT || requestULLON > requestLRLON) {
+            results.put("query_success", false);
+        }
+        if (requestULLON < ROOT_ULLON && requestLRLON > ROOT_LRLON
+                && requestLRLAT < ROOT_LRLAT && requestULLAT > ROOT_ULLAT) {
+            results.put("query_success", false);
+        }
+        results.put("query_success", true);
+
+        // calculate the depth.
+        double requestLonDPP = (requestLRLON - requestULLON) / requestParams.get("w");
+        int depth = 0;
+        double rasterLonDPP = ((ROOT_LRLON - ROOT_ULLON) / Math.pow(2, depth)) / TILE_SIZE;
+        while (rasterLonDPP > requestLonDPP) {
+            depth += 1;
+            rasterLonDPP = ((ROOT_LRLON - ROOT_ULLON) / Math.pow(2, depth)) / TILE_SIZE;
+            if (depth == 7) {
+                break;
+            }
+        }
+        results.put("depth", depth);
+
+
+        double lonPerTile = (ROOT_LRLON - ROOT_ULLON) / Math.pow(2, depth);
+        double latPerTile = (ROOT_ULLAT - ROOT_LRLAT) / Math.pow(2, depth);
+
+        // calculate the ratering upper left longitude.
+        double currULLon = ROOT_ULLON;
+        int indexOfLeftX = 0;
+        while (currULLon  < requestLRLON) {
+            currULLon += lonPerTile;
+            indexOfLeftX += 1;
+            if (currULLon > requestULLON) {
+                currULLon -=lonPerTile;
+                indexOfLeftX -= 1;
+                break;
+            }
+        }
+        results.put("raster_ul_lon", currULLon);
+
+        // calculate the ratering lower right longitude.
+        double currLRLon = ROOT_LRLON;
+        int indexOfRightX = (int)Math.pow(2, depth) - 1;
+        while (requestLRLON < currLRLon) {
+            currLRLon -= lonPerTile;
+            indexOfRightX -= 1;
+            if (requestLRLON > currLRLon) {
+                currLRLon += lonPerTile;
+                indexOfRightX += 1;
+                break;
+            }
+        }
+        results.put("raster_lr_lon", currLRLon);
+
+        // calculate the rastering upper left latitude.
+        double currULLat = ROOT_ULLAT;
+        int indexOfUpperY = 0;
+        while (requestULLAT < currULLat) {
+            currULLat -= latPerTile;
+            indexOfUpperY += 1;
+            if (requestULLAT > currULLat) {
+                currULLat += latPerTile;
+                indexOfUpperY -= 1;
+                break;
+            }
+        }
+        results.put("raster_ul_lat", currULLat);
+
+        // calculate the rastering lower right latitude.
+        double currLRLat = ROOT_LRLAT;
+        int indexOfLowerY = (int) Math.pow(2, depth) - 1;
+        while (currLRLat < requestLRLAT) {
+            currLRLat += latPerTile;
+            indexOfLowerY -= 1;
+            if (currLRLat > requestLRLAT) {
+                currLRLat -= latPerTile;
+                indexOfLowerY += 1;
+                break;
+            }
+        }
+        results.put("raster_lr_lat", currLRLat);
+
+        //All the tiles.
+
+        int indexY = indexOfUpperY;
+        String[][] grid = new String[indexOfLowerY - indexOfUpperY + 1][indexOfRightX - indexOfLeftX + 1];
+        for (int i = 0; i < indexOfLowerY - indexOfUpperY + 1; i += 1) {
+            int indexX = indexOfLeftX;
+            for(int j =0; j < indexOfRightX - indexOfLeftX + 1; j += 1) {
+                grid[i][j] = "d" + depth + "_x" + indexX +  "_y" + indexY + ".png";
+                indexX += 1;
+            }
+            indexY += 1;
+        }
+        results.put("render_grid", grid);
+
         return results;
     }
+
 
     @Override
     protected Object buildJsonResponse(Map<String, Object> result) {
@@ -143,7 +243,7 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
      * In Spring 2016, students had to do this on their own, but in 2017,
      * we made this into provided code since it was just a bit too low level.
      */
-    private  void writeImagesToOutputStream(Map<String, Object> rasteredImageParams,
+    private void writeImagesToOutputStream(Map<String, Object> rasteredImageParams,
                                                   ByteArrayOutputStream os) {
         String[][] renderGrid = (String[][]) rasteredImageParams.get("render_grid");
         int numVertTiles = renderGrid.length;
@@ -205,8 +305,9 @@ public class RasterAPIHandler extends APIRouteHandler<Map<String, Double>, Map<S
         BufferedImage tileImg = null;
         if (tileImg == null) {
             try {
-                File in = new File(imgPath);
-                tileImg = ImageIO.read(in);
+               // File in = new File(imgPath);
+               // tileImg = ImageIO.read(in);
+                tileImg = ImageIO.read(Thread.currentThread().getContextClassLoader().getResource(imgPath));
             } catch (IOException | NullPointerException e) {
                 e.printStackTrace();
             }

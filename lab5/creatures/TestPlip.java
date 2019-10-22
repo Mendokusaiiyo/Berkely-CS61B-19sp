@@ -10,7 +10,7 @@ import huglife.Impassible;
 import huglife.Empty;
 
 /** Tests the plip class
- *  @authr FIXME
+ *  @authr Shawson Tang
  */
 
 public class TestPlip {
@@ -32,10 +32,15 @@ public class TestPlip {
 
     @Test
     public void testReplicate() {
-        // TODO
+        Plip parent = new Plip (2);
+        assertEquals(1, parent.replicate().energy(), 0.01);
+        parent.move();
+        parent.move();
+        assertEquals(0.35, parent.replicate().energy(), 0.01);
+
     }
 
-    //@Test
+    @Test
     public void testChoose() {
 
         // No empty adjacent spaces; stay.
@@ -98,6 +103,17 @@ public class TestPlip {
         assertEquals(expected, actual);
 
 
-        // We don't have Cloruses yet, so we can't test behavior for when they are nearby right now.
+        // Sees a neighbor is clorus.
+        p = new Plip(.99);
+        HashMap<Direction, Occupant> hasClorus = new HashMap<Direction, Occupant>();
+        hasClorus.put(Direction.TOP, new Clorus());
+        hasClorus.put(Direction.BOTTOM, new Empty());
+        hasClorus.put(Direction.LEFT, new Impassible());
+        hasClorus.put(Direction.RIGHT, new Impassible());
+
+        actual = p.chooseAction(hasClorus);
+        expected = new Action(Action.ActionType.MOVE, Direction.BOTTOM);
+
+        assertEquals(expected, actual);
     }
 }

@@ -246,4 +246,17 @@ public class BST<Key extends Comparable<Key>> {
     private boolean isEmpty() {
         return size() == 0;
     }
+
+    /** Returns the average of depth of the BST. */
+    public double averageDepth() {
+        return (double)sumOfDepth(root, 0) / size();
+    }
+
+    /** Calculates the internal path length of the BST. */
+    public int sumOfDepth(Node x, int depth) {
+        if (x == null) {
+            return 0;
+        }
+        return depth + sumOfDepth(x.left, depth + 1) + sumOfDepth(x.right, depth + 1);
+    }
 }
